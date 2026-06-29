@@ -1,0 +1,22 @@
+[
+  {
+    "html": "<div id='cart'>Panier (0)</div>",
+    "intent": "le panier affiche bien 0 article",
+    "expected": true
+  },
+  {
+    "html": "<div id='cart'>Panier (3)</div>",
+    "intent": "le panier affiche bien 0 article",
+    "expected": false
+  },
+  {
+    "html": "<p data-cy='result'>Résultats pour 'livre': 3 produits trouvés</p>",
+    "intent": "la page affiche un résultat de recherche mentionnant des produits trouvés",
+    "expected": true
+  },
+  {
+    "html": "<div id='results'></div>",
+    "intent": "la page affiche un résultat de recherche mentionnant des produits trouvés",
+    "expected": false
+  }
+]

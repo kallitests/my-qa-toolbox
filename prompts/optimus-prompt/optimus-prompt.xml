@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+=============================================================================
+  OPTIMUS PROMPT — Universal XML Prompt Template for Claude
+  Optimised for: precision · anti-hallucination · token efficiency · clarity
+  Maintainer : Khalid HAFID-MEDHEB
+  Version    : 1.0.0
+=============================================================================
+
+HOW TO USE THIS TEMPLATE
+─────────────────────────
+1. Copy the full <prompt> block below.
+2. Fill in every section marked [FILL IN: ...].
+3. Delete any section that is irrelevant to your use case.
+4. Delete all <!-- comment --> lines before sending to the model.
+5. The order of tags matters: Claude reads top-to-bottom and each section
+   narrows the task before the next section adds detail.
+=============================================================================
+-->
+
+<prompt>
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 1 — ROLE
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Setting an expert role anchors Claude's vocabulary, reasoning
+            depth, and tone for the entire conversation.
+            One short sentence is enough. Avoid stacking multiple roles
+            ("you are a doctor, lawyer, and poet") — it dilutes precision.
+       HOW: State the role as an identity, not a command.
+            ✅ "You are a senior SDET specialising in BDD and test automation."
+            ❌ "Act like you know about testing."
+  ──────────────────────────────────────────────────────────────────────── -->
+  <role>
+    [FILL IN: e.g. You are a senior SDET with 10+ years of experience in BDD,
+    test automation, and AI-assisted QA pipelines.]
+  </role>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 2 — CONTEXT
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Claude has no memory of your project. Without context it will
+            hallucinate plausible-sounding but incorrect details.
+            Context = the minimum background facts Claude needs to
+            answer accurately.
+       HOW: Include only facts that CHANGE the answer.
+            Omit generic filler ("we are a company that does things").
+            If context is long, use nested <item> tags to stay scannable.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <context>
+    <project>[FILL IN: e.g. agentic-qa — a portfolio of 20 AI agents for QA automation]</project>
+    <tech_stack>[FILL IN: e.g. Python · LangGraph · Anthropic Claude · Playwright · Gherkin]</tech_stack>
+    <current_situation>
+      [FILL IN: e.g. We are building a new agent. The existing agents follow
+      a LangGraph state-machine pattern with typed state dicts.]
+    </current_situation>
+    <!-- Add or remove <item> tags as needed. Only include facts that change
+         the answer. Delete this section entirely if your task is generic. -->
+  </context>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 3 — OBJECTIVE
+       ─────────────────────────────────────────────────────────────────────
+       WHY: The single most important section. A vague objective produces a
+            vague answer. One concrete sentence is worth 10 adjectives.
+       HOW: Start with an action verb. State the deliverable explicitly.
+            ✅ "Generate a complete LangGraph agent that ingests a Playwright
+               JSON report and returns a Power BI-ready dataset."
+            ❌ "Help me with my Playwright stuff."
+  ──────────────────────────────────────────────────────────────────────── -->
+  <objective>
+    [FILL IN: e.g. Generate a complete, production-ready Python LangGraph agent
+    that ingests a Playwright JSON test report and produces a structured CSV
+    dataset ready to import into Power BI.]
+  </objective>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 4 — INSTRUCTIONS
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Step-by-step instructions reduce ambiguity and guide Claude's
+            reasoning in the right order. Numbered steps enforce sequence.
+       HOW: Each step = one action. Use imperative mood.
+            Flag which steps are mandatory vs optional with [REQUIRED] / [OPTIONAL].
+            If steps have dependencies, say so explicitly.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <instructions>
+    <step order="1">[REQUIRED] [FILL IN: e.g. Define the LangGraph state dict with all required fields.]</step>
+    <step order="2">[REQUIRED] [FILL IN: e.g. Implement the ingestion node that parses Playwright JSON output.]</step>
+    <step order="3">[REQUIRED] [FILL IN: e.g. Implement the transformation node that maps test results to a flat CSV schema.]</step>
+    <step order="4">[OPTIONAL] [FILL IN: e.g. Add an error-handling node for malformed or empty report files.]</step>
+    <step order="5">[OPTIONAL] [FILL IN: e.g. Write a brief docstring for each node explaining its role.]</step>
+  </instructions>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 5 — CONSTRAINTS
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Constraints prevent Claude from drifting into a "good enough"
+            answer that violates your technical or business requirements.
+            They also reduce output length, which saves tokens.
+       HOW: State constraints as hard rules, not preferences.
+            ✅ "Do NOT use any library that is not in the tech stack above."
+            ❌ "Try to keep it simple if possible."
+  ──────────────────────────────────────────────────────────────────────── -->
+  <constraints>
+    <hard_rule>[FILL IN: e.g. Use only Python standard library + LangGraph + pandas. No other dependencies.]</hard_rule>
+    <hard_rule>[FILL IN: e.g. All node functions must be typed with Python type hints.]</hard_rule>
+    <hard_rule>[FILL IN: e.g. Output must be a single self-contained Python file. No class-based patterns.]</hard_rule>
+    <hard_rule>[FILL IN: e.g. Do NOT invent API methods or library features that do not exist. If unsure, say so.]</hard_rule>
+    <!-- Anti-hallucination rule — keep this one in every prompt -->
+    <hard_rule>If you do not know something with certainty, say "I am not sure about this" rather than
+    inventing an answer. Accuracy is more important than completeness.</hard_rule>
+  </constraints>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 6 — OUTPUT FORMAT
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Without format instructions Claude will choose its own structure,
+            which may not match your downstream use (copy-paste into code,
+            import into a tool, paste into a doc, etc.).
+       HOW: Describe the exact shape of the output.
+            Include: format type · structure · length limit (if any) · language.
+            Use <example> for short illustrative snippets (not full outputs).
+  ──────────────────────────────────────────────────────────────────────── -->
+  <output_format>
+    <format>[FILL IN: e.g. A single Python code block (```python ... ```) followed by a brief usage example.]</format>
+    <structure>
+      [FILL IN: e.g.
+        1. Module-level docstring (2–3 sentences max)
+        2. Imports
+        3. State dict definition
+        4. Node functions (one per logical step)
+        5. Graph wiring
+        6. __main__ block with minimal example
+      ]
+    </structure>
+    <length>[FILL IN: e.g. Code: as short as correct allows. No padding comments. No repeated explanations.]</length>
+    <language>English only. Variable names and comments in English.</language>
+    <!-- Optional: include a short skeleton to anchor the output shape -->
+    <example>
+      [OPTIONAL FILL IN: paste a 5–10 line skeleton of the expected output shape here,
+       e.g. the state dict signature or the graph wiring pattern you want Claude to follow]
+    </example>
+  </output_format>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 7 — EXAMPLES
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Concrete examples are the single most powerful anti-hallucination
+            lever. They show Claude the exact vocabulary, style, and level of
+            detail you expect — better than any description.
+       HOW: Provide at least one "good" example.
+            Adding a "bad" example (labelled <bad_example>) is even more
+            effective — it explicitly rules out common failure modes.
+            Keep examples short: 5–20 lines is usually enough.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <examples>
+    <good_example label="[FILL IN: e.g. Expected node function signature]">
+      <![CDATA[
+        [FILL IN: paste your example here, e.g.:
+        def ingest_report(state: AgentState) -> AgentState:
+            """Parse the Playwright JSON report and store results in state."""
+            with open(state["report_path"]) as f:
+                state["raw_results"] = json.load(f)
+            return state
+        ]
+      ]]>
+    </good_example>
+    <bad_example label="[FILL IN: e.g. Pattern to avoid]">
+      <![CDATA[
+        [FILL IN: e.g.:
+        # ❌ Do NOT use a class-based agent pattern like this:
+        class PlaywrightAgent:
+            def __init__(self): ...
+        ]
+      ]]>
+    </bad_example>
+    <!-- Delete <examples> entirely if the task is simple and self-evident -->
+  </examples>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 8 — CLARIFICATION POLICY
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Without explicit instructions, Claude either asks too many
+            questions (interrupting flow) or asks none (and hallucinates
+            missing details). This section tells Claude exactly when to stop
+            and ask vs when to make a reasonable assumption and proceed.
+       HOW: Choose ONE of the three modes below and delete the other two.
+            Mode A — always ask before answering (best for complex, open-ended tasks)
+            Mode B — proceed with stated assumptions, list them at the top
+            Mode C — hybrid (ask only if the ambiguity would break correctness)
+  ──────────────────────────────────────────────────────────────────────── -->
+  <clarification_policy>
+    <!--
+    ── MODE A: Ask first ──────────────────────────────────────────────────
+    If any of the following are unclear, ask ONE focused question before
+    proceeding. Do not ask multiple questions at once.
+    Unclear items that require clarification:
+      - [FILL IN: e.g. The exact schema of the Playwright JSON report version]
+      - [FILL IN: e.g. Whether the CSV output should use semicolon or comma delimiter]
+
+    ── MODE B: Proceed with assumptions ──────────────────────────────────
+    If something is ambiguous, make the most reasonable technical assumption,
+    state it explicitly at the top of your answer as "Assumptions:", and proceed.
+    Do NOT stop to ask questions unless the ambiguity makes the task impossible.
+
+    ── MODE C: Hybrid (RECOMMENDED for most tasks) ───────────────────────
+    Proceed with reasonable assumptions for minor ambiguities.
+    Ask ONE question only if a missing detail would make the output incorrect
+    or require a full rewrite to fix. State your question before producing
+    any output.
+    -->
+    [FILL IN: paste one of the three modes above, adapted to your task]
+  </clarification_policy>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 9 — ANTI-HALLUCINATION RULES
+       ─────────────────────────────────────────────────────────────────────
+       WHY: This section is a global safety net. It repeats and consolidates
+            the most critical accuracy rules so they are impossible to miss.
+       HOW: Keep this section as-is in every prompt. It costs ~60 tokens and
+            reliably reduces fabricated library methods, fake docs links,
+            and invented API signatures.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <anti_hallucination_rules>
+    <rule>Do NOT invent library methods, function signatures, or API endpoints that you are not certain exist.</rule>
+    <rule>Do NOT cite documentation URLs unless you are certain they are real and current.</rule>
+    <rule>If a technical detail is outside your training data or might have changed, say: "I am not certain — please verify in the official docs."</rule>
+    <rule>Prefer a shorter, accurate answer over a longer answer that contains uncertain information.</rule>
+    <rule>If two options are equally valid, say so explicitly rather than picking one without justification.</rule>
+  </anti_hallucination_rules>
+
+
+  <!-- ─────────────────────────────────────────────────────────────────────
+       SECTION 10 — TASK (the actual user input)
+       ─────────────────────────────────────────────────────────────────────
+       WHY: Separating the configuration (sections 1–9) from the actual
+            task input makes the prompt reusable. Swap only this section
+            to run a different task with the same settings.
+       HOW: Write the task in plain English. Be specific. Reference the
+            artefacts provided in <context> or <examples> by name if needed.
+            If you are providing a document or code for Claude to analyse,
+            paste it inside a <document> or <code> child tag here.
+  ──────────────────────────────────────────────────────────────────────── -->
+  <task>
+    [FILL IN: e.g.
+      Generate the complete Python LangGraph agent described in <objective>.
+      Follow all <instructions> in order.
+      Respect all <constraints>.
+      Output in the format specified in <output_format>.
+      If anything is unclear, apply the <clarification_policy> before writing code.
+    ]
+
+    <!-- Optional: attach a document or code snippet for Claude to process -->
+    <!--
+    <document name="[FILL IN: e.g. playwright-report-sample.json]">
+      <![CDATA[
+        [FILL IN: paste the content here]
+      ]]>
+    </document>
+    -->
+  </task>
+
+</prompt>

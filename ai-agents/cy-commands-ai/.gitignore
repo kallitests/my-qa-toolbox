@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+eval/eval-results.json

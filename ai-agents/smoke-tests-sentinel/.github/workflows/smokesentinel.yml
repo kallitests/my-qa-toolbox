@@ -1,0 +1,381 @@
+# ================================================================
+# SmokeSentinel — GitHub Actions Pipeline
+# Jobs:
+#   lint        → ruff + black + mypy (every push + PR)
+#   test        → pytest on agent quality suite (every push + PR)
+#   smoke-pr    → smoke tests on staging (PR to main)
+#   smoke-main  → smoke tests on prod (push to main)
+#   smoke-cron  → scheduled smoke every 4h (production monitoring)
+# ================================================================
+
+name: SmokeSentinel CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Every 4 hours — production monitoring
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+    inputs:
+      story:
+        description: "User story to smoke test (leave empty for URL mode)"
+        required: false
+        default: ""
+      env:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  PYTHON_VERSION: "3.11"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/smokesentinel
+
+jobs:
+
+  # ── JOB 1: LINTER ─────────────────────────────────────────────
+  lint:
+    name: 🔍 Lint & Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install lint dependencies
+        run: pip install ruff black mypy --break-system-packages 2>/dev/null || pip install ruff black mypy
+
+      - name: Ruff lint
+        run: ruff check agent/ mcp/ models/ notifier/ tests/
+
+      - name: Black format check
+        run: black --check --diff agent/ mcp/ models/ notifier/ tests/
+
+      - name: Mypy type check
+        run: mypy agent/ mcp/ models/ --ignore-missing-imports
+
+  # ── JOB 2: AGENT QUALITY TESTS ────────────────────────────────
+  test:
+    name: 🧪 Agent Quality Tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run pytest (agent quality suite)
+        run: pytest tests/ -v --cov=agent --cov=mcp --cov=models --cov-report=xml --cov-report=term-missing
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CI: true
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
+
+  # ── JOB 3: BUILD DOCKER IMAGE ─────────────────────────────────
+  build:
+    name: 🐳 Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint, test]
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── JOB 4: SMOKE TESTS (PR → STAGING) ─────────────────────────
+  smoke-pr:
+    name: 💨 Smoke Tests — Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (Playwright MCP server)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright MCP server
+        run: npm install -g @playwright/mcp@latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install SmokeSentinel
+        run: pip install -e ".[dev]"
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Start Playwright MCP server
+        run: npx @playwright/mcp@latest --port 3001 --headless &
+        env:
+          DISPLAY: ":99"
+
+      - name: Wait for MCP server
+        run: |
+          for i in {1..20}; do
+            curl -sf http://localhost:3001/health && echo "MCP ready" && break
+            echo "Waiting for MCP... ($i/20)"
+            sleep 3
+          done
+
+      - name: Run SmokeSentinel (staging)
+        id: smoke
+        run: |
+          python -m smokesentinel \
+            --env staging \
+            --story "${{ github.event.pull_request.title }}" \
+            --output reports/smoke-pr-${{ github.run_number }}.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MCP_SERVER_URL: http://localhost:3001
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+          LANGCHAIN_TRACING_V2: ${{ vars.LANGCHAIN_TRACING_V2 || 'false' }}
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+          LANGCHAIN_PROJECT: smokesentinel
+          CI: true
+
+      - name: Upload smoke report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report-pr-${{ github.run_number }}
+          path: reports/
+          retention-days: 14
+
+      - name: Comment PR with smoke result
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            let verdict = 'UNKNOWN';
+            let summary = 'Rapport non disponible';
+            try {
+              const report = JSON.parse(
+                fs.readFileSync(`reports/smoke-pr-${{ github.run_number }}.json`, 'utf8')
+              );
+              verdict = report.verdict;
+              const icon = verdict === 'HEALTHY' ? '✅' : verdict === 'DEGRADED' ? '⚠️' : '❌';
+              const passed = report.paths_passed;
+              const total = report.paths_tested;
+              const duration = (report.total_duration_ms / 1000).toFixed(1);
+              summary = `${icon} **SmokeSentinel — ${verdict}**\n\n` +
+                        `${passed}/${total} chemins critiques · ${duration}s\n\n` +
+                        `[Voir le rapport complet](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+            } catch (e) {
+              summary = `❌ SmokeSentinel — Rapport non disponible (${e.message})`;
+            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  # ── JOB 5: SMOKE TESTS (push main → PRODUCTION) ───────────────
+  smoke-main:
+    name: 💨 Smoke Tests — Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright MCP + SmokeSentinel
+        run: |
+          npm install -g @playwright/mcp@latest
+          pip install -e ".[dev]"
+          playwright install chromium --with-deps
+
+      - name: Start Playwright MCP server
+        run: npx @playwright/mcp@latest --port 3001 --headless &
+
+      - name: Wait for MCP
+        run: sleep 8
+
+      - name: Run SmokeSentinel (production)
+        run: |
+          python -m smokesentinel \
+            --env production \
+            --output reports/smoke-prod-${{ github.run_number }}.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MCP_SERVER_URL: http://localhost:3001
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          TARGET_URL: ${{ vars.PRODUCTION_URL }}
+          LANGCHAIN_TRACING_V2: ${{ vars.LANGCHAIN_TRACING_V2 || 'false' }}
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+          CI: true
+
+      - name: Upload smoke report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report-prod-${{ github.run_number }}
+          path: reports/
+          retention-days: 30
+
+  # ── JOB 6: LLM EVAL HARNESS (hebdomadaire + on-demand) ───────
+  eval-harness:
+    name: 🧠 LLM Eval Harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 9 * * 1')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]" sentence-transformers
+
+      - name: Run eval harness (fast mode)
+        run: python evals/smoke_eval_harness.py --mode fast --langsmith
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+          LANGCHAIN_TRACING_V2: "true"
+          LANGCHAIN_PROJECT: smokesentinel-evals
+
+      - name: Upload eval report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-harness-${{ github.run_number }}
+          path: evals/
+          retention-days: 30
+
+  # ── JOB 7: SMOKE CRON (surveillance toutes les 4h) ────────────
+  smoke-cron:
+    name: ⏰ Smoke Tests — Scheduled (4h)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js + Python
+        run: |
+          npm install -g @playwright/mcp@latest
+          pip install -e ".[dev]"
+          playwright install chromium --with-deps
+
+      - name: Start Playwright MCP server
+        run: npx @playwright/mcp@latest --port 3001 --headless &
+
+      - name: Wait for MCP
+        run: sleep 8
+
+      - name: Run SmokeSentinel (scheduled)
+        run: |
+          python -m smokesentinel \
+            --env ${{ github.event.inputs.env || 'production' }} \
+            --story "${{ github.event.inputs.story || '' }}" \
+            --output reports/smoke-cron-${{ github.run_number }}.json
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MCP_SERVER_URL: http://localhost:3001
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TARGET_URL: ${{ vars.PRODUCTION_URL }}
+          LANGCHAIN_TRACING_V2: "false"
+          CI: true
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report-cron-${{ github.run_number }}
+          path: reports/
+          retention-days: 7

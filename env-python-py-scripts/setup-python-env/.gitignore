@@ -1,0 +1,117 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  .gitignore — dev-setup-kit                                              ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+.installed.cfg
+MANIFEST
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env/
+pyenv/
+.python-version
+
+# ── Testing & coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+coverage-reports/
+junit-*.xml
+.tox/
+.nox/
+
+# ── Type checking ─────────────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ── Linting & formatting ──────────────────────────────────────────────────────
+.ruff_cache/
+
+# ── Secrets & environment ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+.secrets.baseline
+
+# ── IDEs & editors ────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json     # share recommended extensions
+!.vscode/settings.json       # share workspace settings
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.iml
+.project
+.classpath
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Ollama ────────────────────────────────────────────────────────────────────
+# Never commit pulled model weights
+*.gguf
+*.bin
+ollama-models/
+
+# ── Temp & installer downloads ────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.temp
+*.exe        # downloaded installers
+*.msi
+*.dmg
+*.pkg
+get-pip.py
+
+# ── Logs & reports ────────────────────────────────────────────────────────────
+*.log
+logs/
+bandit-report.json
+pip-audit-report.json
+dry-run-output.txt
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

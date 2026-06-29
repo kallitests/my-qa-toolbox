@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Demo App — cy-commands-box</title></head>
+<body>
+  <header>
+    <h1 id="logo">MonApp</h1>
+    <nav>
+      <a href="#cart" id="cart-link">Panier (0)</a>
+      <a href="#account" id="account-link">Identifiez-vous</a>
+    </nav>
+  </header>
+  <main>
+    <input id="search" type="text" placeholder="Rechercher un produit..." />
+    <button id="search-btn">Rechercher</button>
+    <div id="results"></div>
+  </main>
+  <footer id="footer">© 2026 MonApp — À propos | Aide</footer>
+  <script>
+    document.getElementById('search-btn').addEventListener('click', () => {
+      const q = document.getElementById('search').value;
+      document.getElementById('results').innerHTML = q
+        ? `<p data-cy="result">Résultats pour "${q}": 3 produits trouvés</p>`
+        : '';
+    });
+  </script>
+</body>
+</html>

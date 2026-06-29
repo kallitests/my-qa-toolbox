@@ -1,0 +1,79 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  .dockerignore — dev-setup-kit                                           ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ── Python caches ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+coverage-reports/
+junit-*.xml
+dist/
+build/
+*.egg-info/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── Docker meta (never embed inside image) ────────────────────────────────────
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# ── Pre-commit ────────────────────────────────────────────────────────────────
+.pre-commit-config.yaml
+.secrets.baseline
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ── Logs & reports ────────────────────────────────────────────────────────────
+*.log
+logs/
+bandit-report.json
+pip-audit-report.json
+dry-run-output.txt
+
+# ── Temp & installer downloads ────────────────────────────────────────────────
+tmp/
+temp/
+*.exe
+*.msi
+get-pip.py
+*.gguf
+*.bin
+
+# ── Docs (not needed at runtime) ─────────────────────────────────────────────
+docs/
+*.md
+LICENSE
+CHANGELOG.md
+CONTRIBUTING.md

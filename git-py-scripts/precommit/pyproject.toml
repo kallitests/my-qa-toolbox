@@ -1,0 +1,61 @@
+# pyproject.toml
+# Single configuration file for all tools — no separate .flake8, .mypy.ini, or setup.cfg needed.
+
+[tool.black]
+line-length = 88                  # black's default — must match ruff's line-length exactly
+target-version = ["py311"]        # generates code compatible with Python 3.11+
+skip-string-normalization = false # always normalise to double quotes
+
+[tool.ruff]
+line-length = 88                  # must match black's line-length exactly
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes — undefined names, unused imports
+  "I",    # isort — import order
+  "C90",  # mccabe complexity — flags functions with complexity > threshold
+  "UP",   # pyupgrade — modernises syntax to Python 3.11+
+  "B",    # flake8-bugbear — common bug patterns
+  "S",    # flake8-bandit lite — basic security checks
+]
+ignore = [
+  "E501", # line too long — handled by black, not ruff
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10               # functions exceeding complexity 10 are flagged for refactor
+
+[tool.ruff.lint.isort]
+known-first-party = ["qa_toolbox"] # treats qa_toolbox as internal — adjust to your package name
+
+[tool.mypy]
+python_version = "3.11"
+strict = true                     # enables all strict checks: no untyped defs, no implicit optional
+ignore_missing_imports = true     # prevents errors on third-party libs without type stubs
+warn_unused_ignores = true        # flags # type: ignore comments that are no longer needed
+show_error_codes = true           # shows error codes (e.g. [attr-defined]) for easier lookup
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"] # skip test files and virtual env — test assertions look "insecure"
+skips = ["B101"]                  # B101 = assert statement — legitimate in pytest tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]             # pytest looks for tests only in the tests/ directory
+python_files = ["test_*.py"]      # matches standard pytest naming convention
+python_functions = ["test_*"]
+addopts = [
+  "--cov=.",                      # measure coverage across the whole repo
+  "--cov-report=term-missing",    # show uncovered lines in terminal output
+  "--cov-report=xml",             # generate coverage.xml for CI ingestion
+  "--cov-fail-under=80",          # block commit if coverage drops below 80%
+  "-v",                           # verbose output — shows each test name
+]
+
+[tool.coverage.run]
+omit = [
+  "tests/*",    # do not measure coverage of the test files themselves
+  ".venv/*",    # exclude virtual environment
+]

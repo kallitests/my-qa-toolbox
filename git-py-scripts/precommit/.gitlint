@@ -1,0 +1,21 @@
+# .gitlint
+# Enforces Conventional Commits format on every commit message.
+# Docs: https://jorisroovers.com/gitlint
+
+[general]
+fail-without-commits = false      # do not fail on empty repos (first commit edge case)
+ignore = body-is-missing          # body is optional — subject line is enough for most commits
+
+[title-max-length]
+line-length = 72                  # GitHub truncates subject lines over 72 chars in the UI
+
+[title-min-length]
+min-length = 10                   # prevents useless messages like "fix" or "wip"
+
+[title-match-regex]
+# Enforces Conventional Commits: type(scope): description
+# Allowed types: feat fix chore docs test refactor perf ci build
+regex = ^(feat|fix|chore|docs|test|refactor|perf|ci|build)(\(.+\))?: .+$
+
+[body-max-line-length]
+line-length = 100                 # body lines can be slightly longer than the subject

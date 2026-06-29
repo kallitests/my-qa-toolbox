@@ -1,0 +1,102 @@
+# ================================================================
+# SmokeSentinel — Docker Compose
+# Services:
+#   lint    → ruff + black check (linter job)
+#   smoke   → SmokeSentinel smoke test run (smoketests job)
+#   mcp     → Playwright MCP server (sidecar for smoke)
+# ================================================================
+
+version: "3.9"
+
+services:
+
+  # ── LINTER JOB ────────────────────────────────────────────────
+  lint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smokesentinel:latest
+    container_name: smokesentinel-lint
+    command: >
+      sh -c "
+        echo '── Ruff lint ──' &&
+        ruff check src/ agent/ mcp/ models/ notifier/ tests/ &&
+        echo '── Black format check ──' &&
+        black --check --diff src/ agent/ mcp/ models/ notifier/ tests/ &&
+        echo '── Mypy type check ──' &&
+        mypy agent/ mcp/ models/ --ignore-missing-imports &&
+        echo '✅ All lint checks passed'
+      "
+    environment:
+      - CI=true
+    volumes:
+      - .:/app
+    working_dir: /app
+    profiles:
+      - lint
+
+  # ── PLAYWRIGHT MCP SERVER (sidecar) ───────────────────────────
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smokesentinel:latest
+    container_name: smokesentinel-mcp
+    command: npx @playwright/mcp@latest --port 3001 --headless
+    environment:
+      - DISPLAY=:99
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    profiles:
+      - smoke
+
+  # ── SMOKE TESTS JOB ───────────────────────────────────────────
+  smoke:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smokesentinel:latest
+    container_name: smokesentinel-run
+    command: python -m smokesentinel --env ${SMOKE_ENV:-staging} --story "${SMOKE_STORY:-}"
+    depends_on:
+      mcp:
+        condition: service_healthy
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - GITHUB_PR_NUMBER=${GITHUB_PR_NUMBER}
+      - MCP_SERVER_URL=http://mcp:3001
+      - SMOKE_ENV=${SMOKE_ENV:-staging}
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_PROJECT=smokesentinel
+    volumes:
+      - ./reports:/app/reports
+    working_dir: /app
+    profiles:
+      - smoke
+
+  # ── PYTEST (agent quality tests) ──────────────────────────────
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smokesentinel:latest
+    container_name: smokesentinel-pytest
+    command: pytest tests/ -v --cov=agent --cov=mcp --cov=models --cov-report=term-missing
+    environment:
+      - CI=true
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - .:/app
+    working_dir: /app
+    profiles:
+      - test

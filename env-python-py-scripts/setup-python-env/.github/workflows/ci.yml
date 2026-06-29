@@ -1,0 +1,308 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  .github/workflows/ci.yml — dev-setup-kit                               ║
+# ║                                                                          ║
+# ║  Jobs:                                                                   ║
+# ║    lint       — ruff + black + isort + mypy                             ║
+# ║    test       — pytest + coverage (matrix: Python 3.11 / 3.12 / 3.13)  ║
+# ║    security   — bandit + pip-audit                                       ║
+# ║    build      — Docker build + push to GHCR                             ║
+# ║    dry-run    — smoke test: run installer in dry-run mode               ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly run at 02:00 UTC — catches dependency drift
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: "Python version to test against"
+        required: false
+        default: "3.13"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true   # cancel outdated runs on the same branch
+
+# ── Default permissions (least privilege) ────────────────────────────────────
+permissions:
+  contents: read
+
+jobs:
+
+  # ╔════════════════════════════════════════════════════════════════════╗
+  # ║  JOB 1 — Lint                                                      ║
+  # ╚════════════════════════════════════════════════════════════════════╝
+  lint:
+    name: Lint (ruff · black · isort · mypy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: pip install --quiet ".[dev]"
+
+      - name: ruff — lint
+        run: ruff check scripts/ tests/ --output-format=github
+
+      - name: ruff — format check
+        run: ruff format --check scripts/ tests/
+
+      - name: black — format check
+        run: black --check scripts/ tests/
+
+      - name: isort — import order check
+        run: isort --check-only scripts/ tests/
+
+      - name: mypy — type check
+        run: mypy scripts/
+        continue-on-error: true   # type errors are warnings for now
+
+  # ╔════════════════════════════════════════════════════════════════════╗
+  # ║  JOB 2 — Test (matrix)                                             ║
+  # ╚════════════════════════════════════════════════════════════════════╝
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    needs: lint
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --quiet ".[dev]"
+
+      - name: Run pytest
+        env:
+          # Ollama not available in CI — agent falls back gracefully
+          OLLAMA_BASE_URL: "http://localhost:11434"
+          OLLAMA_MODEL:    "mistral"
+        run: |
+          pytest tests/ \
+            -v \
+            --tb=short \
+            --cov=scripts \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --junitxml=junit-${{ matrix.python-version }}.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.13'
+        with:
+          files: coverage.xml
+          flags: unittests
+          name: coverage-py${{ matrix.python-version }}
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-py${{ matrix.python-version }}
+          path: junit-${{ matrix.python-version }}.xml
+          retention-days: 7
+
+  # ╔════════════════════════════════════════════════════════════════════╗
+  # ║  JOB 3 — Security                                                  ║
+  # ╚════════════════════════════════════════════════════════════════════╝
+  security:
+    name: Security (bandit · pip-audit)
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: pip install --quiet ".[dev]"
+
+      - name: bandit — SAST scan
+        run: bandit -r scripts/ -c pyproject.toml -ll -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: bandit — print report
+        run: |
+          python -c "
+          import json, sys
+          data = json.load(open('bandit-report.json'))
+          issues = data.get('results', [])
+          highs = [i for i in issues if i['issue_severity'] == 'HIGH']
+          print(f'Issues: {len(issues)} total, {len(highs)} HIGH severity')
+          if highs:
+              for i in highs:
+                  print(f'  ❌ {i[\"filename\"]}:{i[\"line_number\"]} — {i[\"issue_text\"]}')
+              sys.exit(1)
+          print('✅ No HIGH severity issues')
+          "
+
+      - name: pip-audit — CVE scan
+        run: pip-audit --desc --format json --output pip-audit-report.json
+        continue-on-error: true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+          retention-days: 30
+
+  # ╔════════════════════════════════════════════════════════════════════╗
+  # ║  JOB 4 — Docker build                                              ║
+  # ╚════════════════════════════════════════════════════════════════════╝
+  build:
+    name: Docker build & push (GHCR)
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    if: github.event_name != 'pull_request'
+
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            PYTHON_VERSION=3.14
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      - name: Build CI image (for future test jobs)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ci
+          push: true
+          tags: ghcr.io/${{ github.repository }}:ci
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+  # ╔════════════════════════════════════════════════════════════════════╗
+  # ║  JOB 5 — Dry-run smoke test                                        ║
+  # ╚════════════════════════════════════════════════════════════════════╝
+  dry-run:
+    name: Smoke test (dry-run installer)
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --quiet ".[dev]"
+
+      - name: Run installer in dry-run mode
+        env:
+          OLLAMA_BASE_URL: "http://localhost:11434"
+          OLLAMA_MODEL:    "mistral"
+        run: |
+          python scripts/setup_dev_env.py \
+            --dry-run \
+            --skip-plugins \
+            2>&1 | tee dry-run-output.txt
+          # Verify expected output markers
+          grep -q "DRY-RUN" dry-run-output.txt && echo "✅ dry-run mode active"
+          grep -q "Python latest" dry-run-output.txt && echo "✅ version fetch OK"
+
+      - name: Upload dry-run output
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dry-run-output
+          path: dry-run-output.txt
+          retention-days: 7
+
+  # ╔════════════════════════════════════════════════════════════════════╗
+  # ║  Summary gate — required status for branch protection              ║
+  # ╚════════════════════════════════════════════════════════════════════╝
+  ci-gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    needs: [lint, test, security, dry-run]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.lint.result }}"    != "success" ]] ||
+             [[ "${{ needs.test.result }}"    != "success" ]] ||
+             [[ "${{ needs.security.result }}" == "failure" ]] ||
+             [[ "${{ needs.dry-run.result }}" != "success" ]]; then
+            echo "❌ One or more CI jobs failed"
+            exit 1
+          fi
+          echo "✅ All CI jobs passed"

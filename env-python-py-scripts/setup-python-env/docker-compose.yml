@@ -1,0 +1,199 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  docker-compose.yml — dev-setup-kit                                      ║
+# ║                                                                          ║
+# ║  Services:                                                               ║
+# ║    ollama      — local LLM server (Mistral, Llama3, etc.)               ║
+# ║    app         — runs setup_dev_env.py (default: dry-run)               ║
+# ║    lint        — ruff + black + isort + mypy                            ║
+# ║    test        — pytest + coverage                                       ║
+# ║    security    — bandit + pip-audit                                      ║
+# ║    format      — black + isort auto-fix (writes back to host)           ║
+# ║                                                                          ║
+# ║  Usage:                                                                  ║
+# ║    docker compose up ollama             # start LLM server               ║
+# ║    docker compose run --rm app          # dry-run installer              ║
+# ║    docker compose run --rm lint         # lint all Python files          ║
+# ║    docker compose run --rm test         # run test suite                 ║
+# ║    docker compose run --rm security     # security scan                  ║
+# ║    docker compose run --rm format       # auto-format code               ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+x-common-env: &common-env
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+  OLLAMA_MODEL:    ${OLLAMA_MODEL:-mistral}
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+x-app-base: &app-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: runtime
+    args:
+      PYTHON_VERSION: ${PYTHON_VERSION:-3.14}
+  volumes:
+    - ./scripts:/app/scripts:ro
+    - ./tests:/app/tests:ro
+  environment:
+    <<: *common-env
+
+x-ci-base: &ci-base
+  build:
+    context: .
+    dockerfile: Dockerfile
+    target: ci
+    args:
+      PYTHON_VERSION: ${PYTHON_VERSION:-3.14}
+  volumes:
+    - ./scripts:/app/scripts:ro
+    - ./tests:/app/tests:ro
+    - ./pyproject.toml:/app/pyproject.toml:ro
+
+services:
+
+  # ── Ollama — local LLM server ─────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dev-setup-kit-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama   # persist pulled models across restarts
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"        # keep model loaded in memory
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    profiles:
+      - full
+      - ollama
+
+  # ── Ollama model puller — runs once, pulls the default model ──────────────
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: dev-setup-kit-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "ollama pull ${OLLAMA_MODEL:-mistral}
+             && echo '✅ Model ${OLLAMA_MODEL:-mistral} ready'"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    profiles:
+      - full
+      - ollama
+
+  # ── App — run setup_dev_env.py ────────────────────────────────────────────
+  app:
+    <<: *app-base
+    container_name: dev-setup-kit-app
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: >
+      python -m scripts.setup_dev_env
+        --dry-run
+        --model ${OLLAMA_MODEL:-mistral}
+        --ollama-url ${OLLAMA_BASE_URL:-http://ollama:11434}
+    profiles:
+      - full
+      - app
+
+  # ── Lint — ruff + mypy ───────────────────────────────────────────────────
+  lint:
+    <<: *ci-base
+    container_name: dev-setup-kit-lint
+    command: >
+      sh -c "
+        echo '── ruff check ──' &&
+        ruff check scripts/ tests/ &&
+        echo '── ruff format check ──' &&
+        ruff format --check scripts/ tests/ &&
+        echo '── black check ──' &&
+        black --check scripts/ tests/ &&
+        echo '── isort check ──' &&
+        isort --check-only scripts/ tests/ &&
+        echo '── mypy ──' &&
+        mypy scripts/ &&
+        echo '✅ All lint checks passed'
+      "
+    profiles:
+      - lint
+      - ci
+
+  # ── Format — auto-fix (writes back to host via volume mount) ─────────────
+  format:
+    <<: *ci-base
+    container_name: dev-setup-kit-format
+    volumes:
+      - ./scripts:/app/scripts      # rw — writes formatting changes back
+      - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml:ro
+    command: >
+      sh -c "
+        echo '── ruff format (fix) ──' &&
+        ruff format scripts/ tests/ &&
+        echo '── ruff check --fix ──' &&
+        ruff check --fix scripts/ tests/ &&
+        echo '── black ──' &&
+        black scripts/ tests/ &&
+        echo '── isort ──' &&
+        isort scripts/ tests/ &&
+        echo '✅ Formatting applied'
+      "
+    profiles:
+      - format
+
+  # ── Test — pytest + coverage ──────────────────────────────────────────────
+  test:
+    <<: *ci-base
+    container_name: dev-setup-kit-test
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./tests:/app/tests:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - coverage-reports:/app/coverage-reports
+    environment:
+      <<: *common-env
+      PYTEST_ADDOPTS: "--color=yes"
+    command: >
+      pytest tests/ -v
+        --tb=short
+        --cov=scripts
+        --cov-report=term-missing
+        --cov-report=xml:coverage-reports/coverage.xml
+        --cov-report=html:coverage-reports/htmlcov
+    profiles:
+      - test
+      - ci
+
+  # ── Security — bandit + pip-audit ─────────────────────────────────────────
+  security:
+    <<: *ci-base
+    container_name: dev-setup-kit-security
+    command: >
+      sh -c "
+        echo '── bandit (SAST) ──' &&
+        bandit -r scripts/ -c pyproject.toml -ll &&
+        echo '── pip-audit (CVE scan) ──' &&
+        pip-audit --desc &&
+        echo '✅ Security checks passed'
+      "
+    profiles:
+      - security
+      - ci
+
+volumes:
+  ollama-models:
+    name: dev-setup-kit-ollama-models
+  coverage-reports:
+    name: dev-setup-kit-coverage
+
+networks:
+  default:
+    name: dev-setup-kit-network

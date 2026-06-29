@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<prompt>
+
+  <role>
+    You are a senior Python engineer and SDET with 10+ years of experience in
+    QA automation, developer tooling, and Python project configuration.
+    You are an expert in pre-commit hooks, code quality pipelines, and
+    security hardening for Python-only repositories.
+  </role>
+
+  <context>
+    <project>qa-toolbox — a shared GitHub repository of Python utility scripts
+    used by a QA automation team (SDET). Scripts cover test helpers, report
+    parsers, CI/CD utilities, data fixtures, and GitHub repo management.</project>
+    <tech_stack>Python 3.11+ · pip · pre-commit framework · ruff · black ·
+    mypy · bandit · pip-audit · detect-secrets · gitleaks · pytest ·
+    pytest-cov · commitlint · gitlint</tech_stack>
+    <current_situation>
+      The team is creating the repository from scratch on GitHub.
+      All scripts are pure Python — no JavaScript, no Go, no other languages.
+      The team wants a production-grade pre-commit configuration that goes
+      beyond simple linting: security, type safety, test coverage, secret
+      detection, and commit message enforcement are all required.
+      Developer machines run Windows, macOS, and Linux.
+    </current_situation>
+  </context>
+
+  <objective>
+    Generate a complete, production-ready pre-commit configuration for a
+    Python-only QA toolbox repository, covering security scanning, formatting,
+    type checking, dead code detection, secret detection, test coverage
+    enforcement, commit message validation, and file hygiene — with every
+    file and every configuration option explained.
+  </objective>
+
+  <instructions>
+    <step order="1">[REQUIRED] Generate the .pre-commit-config.yaml file with
+    all hooks grouped by category: file hygiene, formatting, linting, type
+    checking, security, secrets, tests, and commit message.</step>
+
+    <step order="2">[REQUIRED] For each hook, add an inline comment explaining
+    what it checks and why it matters for a QA Python team.</step>
+
+    <step order="3">[REQUIRED] Generate the pyproject.toml configuration sections
+    for: black, ruff, mypy, bandit, and pytest-cov — with sane defaults for
+    a QA toolbox codebase.</step>
+
+    <step order="4">[REQUIRED] Generate a .gitlint file to enforce Conventional
+    Commits format (feat, fix, chore, docs, test, refactor) with a 72-character
+    subject line limit.</step>
+
+    <step order="5">[REQUIRED] Generate a .secrets.baseline file initialisation
+    command and explain how detect-secrets integrates with pre-commit.</step>
+
+    <step order="6">[REQUIRED] Provide the exact shell commands to install and
+    activate the full pre-commit stack on a fresh clone, for Windows (PowerShell),
+    macOS, and Linux.</step>
+
+    <step order="7">[OPTIONAL] Provide a Makefile with shortcuts: make install,
+    make lint, make test, make audit — so team members do not need to remember
+    individual commands.</step>
+  </instructions>
+
+  <constraints>
+    <hard_rule>Python only — do NOT include hooks for JavaScript, TypeScript,
+    Go, or any other language.</hard_rule>
+    <hard_rule>Every hook must use a pinned rev (exact version tag, not "latest"
+    or a branch name) to guarantee reproducibility across developer machines.</hard_rule>
+    <hard_rule>Do NOT use deprecated hooks or tools. If a tool has a preferred
+    modern replacement, use the replacement and note the reason.</hard_rule>
+    <hard_rule>All configuration must be compatible with Python 3.11+,
+    Windows PowerShell, macOS zsh, and Linux bash.</hard_rule>
+    <hard_rule>The pre-commit suite must complete in under 15 seconds on a
+    typical QA script file (under 500 lines). Flag any hook that may be slow and
+    explain how to limit its scope.</hard_rule>
+    <hard_rule>Do NOT invent hook IDs, repo URLs, or tool options that do not
+    exist. If unsure about a specific version or option, say so explicitly.</hard_rule>
+    <hard_rule>If you do not know something with certainty, say "I am not sure —
+    please verify in the official docs" rather than inventing an answer.</hard_rule>
+  </constraints>
+
+  <output_format>
+    <format>
+      One clearly labelled code block per file, in this order:
+      1. .pre-commit-config.yaml
+      2. pyproject.toml (relevant sections only)
+      3. .gitlint
+      4. Installation commands (three OS variants)
+      5. Makefile (optional step 7)
+    </format>
+    <structure>
+      Each file block:
+        - Preceded by a one-line header: ## filename
+        - Inline comments on every non-obvious line
+        - Followed by a 2-sentence explanation of the file's role
+    </structure>
+    <length>No padding. No repetition between sections. Comments inside files
+    count as documentation — keep them concise (one line per hook max).</length>
+    <language>English only. All comments, commit messages, and variable names
+    in English.</language>
+  </output_format>
+
+  <examples>
+    <good_example label="Expected hook entry style in .pre-commit-config.yaml">
+      <![CDATA[
+      - repo: https://github.com/psf/black
+        rev: 24.4.2                          # pinned exact version — never use "latest"
+        hooks:
+          - id: black                        # auto-formats Python files before commit
+            language_version: python3.11     # ensures consistent formatting across OS
+      ]]>
+    </good_example>
+    <bad_example label="Hook entry style to avoid">
+      <![CDATA[
+      # Do NOT write hooks like this:
+      - repo: https://github.com/psf/black
+        rev: main                            # unpinned branch — breaks reproducibility
+        hooks:
+          - id: black
+      ]]>
+    </bad_example>
+  </examples>
+
+  <clarification_policy>
+    Proceed with reasonable technical assumptions for minor ambiguities and
+    state them explicitly at the top of your answer under "Assumptions:".
+    Ask ONE question only if a missing detail would make the output incorrect
+    or require a full rewrite — and ask it before producing any output.
+  </clarification_policy>
+
+  <anti_hallucination_rules>
+    <rule>Do NOT invent hook IDs, repo URLs, or tool options that you are not
+    certain exist in the current version of each tool.</rule>
+    <rule>Do NOT cite documentation URLs unless you are certain they are real
+    and currently valid.</rule>
+    <rule>If a tool version or configuration option might have changed since
+    your training data, say: "I am not certain — please verify in the official
+    docs at [tool homepage]."</rule>
+    <rule>Prefer a shorter, accurate answer over a longer answer that contains
+    uncertain information.</rule>
+    <rule>If two hook options are equally valid, say so explicitly rather than
+    picking one without justification.</rule>
+  </anti_hallucination_rules>
+
+  <task>
+    Generate the complete pre-commit configuration stack for the qa-toolbox
+    Python repository described in the context section above.
+    Follow all instructions in order.
+    Respect all constraints.
+    Format the output exactly as specified in the output_format section.
+    Apply the clarification_policy if anything is ambiguous before writing
+    any file.
+
+    The deliverables must cover all of the following pre-commit categories
+    for a Python-only QA team repository:
+      - File hygiene (whitespace, line endings, large files, merge conflicts)
+      - Code formatting (black)
+      - Linting and complexity (ruff)
+      - Type checking (mypy)
+      - Dead code detection
+      - Secret and credential scanning (detect-secrets or gitleaks)
+      - Dependency vulnerability scanning (pip-audit or safety)
+      - SAST / insecure code patterns (bandit)
+      - Unit test execution on changed files with coverage threshold (pytest-cov)
+      - Commit message enforcement (gitlint — Conventional Commits format)
+  </task>
+
+</prompt>

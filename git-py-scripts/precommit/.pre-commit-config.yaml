@@ -1,0 +1,86 @@
+# .pre-commit-config.yaml
+# Runs automatically on every `git commit`.
+# To run manually on all files: pre-commit run --all-files
+
+default_language_version:
+  python: python3.11          # enforce consistent Python version across all hooks
+
+repos:
+
+  # ── FILE HYGIENE ────────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace        # removes trailing spaces that pollute diffs
+      - id: end-of-file-fixer          # ensures every file ends with a single newline
+      - id: mixed-line-ending          # normalises CRLF→LF (critical for Windows devs)
+        args: [--fix=lf]
+      - id: check-added-large-files    # blocks files over 500KB (accidental binaries/datasets)
+        args: [--maxkb=500]
+      - id: check-merge-conflict       # blocks leftover <<<<<<< markers
+      - id: check-yaml                 # validates YAML syntax (config files, CI pipelines)
+      - id: check-toml                 # validates pyproject.toml syntax
+      - id: check-json                 # validates JSON fixture/config files
+      - id: detect-private-key         # blocks accidental commit of RSA/PEM private keys
+
+  # ── CODE FORMATTING ─────────────────────────────────────────────────────────
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black                      # auto-formats Python — eliminates all style debates
+
+  # ── LINTING & COMPLEXITY ────────────────────────────────────────────────────
+  # ruff replaces flake8 + isort + pyupgrade + many pylint rules in one fast tool
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.9
+    hooks:
+      - id: ruff                       # lints and checks complexity, imports, style
+        args: [--fix]                  # auto-fix safe violations (unused imports, etc.)
+      - id: ruff-format                # ruff's own formatter as a black-compatible pass
+
+  # ── TYPE CHECKING ───────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy                       # static type checker — catches bugs before runtime
+        args: [--ignore-missing-imports, --strict]
+        # mypy is scoped to changed files only by pre-commit — stays fast
+
+  # ── DEAD CODE DETECTION ─────────────────────────────────────────────────────
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: v2.11
+    hooks:
+      - id: vulture                    # detects unused functions, variables, imports
+        args: [., --min-confidence=80] # 80% threshold avoids false positives on dynamic code
+
+  # ── SECRET & CREDENTIAL SCANNING ────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets             # scans for API keys, tokens, passwords in diffs
+        args: [--baseline, .secrets.baseline]
+        # requires a baseline file — run: detect-secrets scan > .secrets.baseline
+
+  # ── SAST — INSECURE CODE PATTERNS ───────────────────────────────────────────
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit                     # flags insecure patterns: hardcoded passwords, shell injection
+        args: [-c, pyproject.toml]     # reads bandit config from pyproject.toml
+
+  # ── DEPENDENCY VULNERABILITY SCAN ───────────────────────────────────────────
+  - repo: local                        # pip-audit has no official pre-commit mirror — run locally
+    hooks:
+      - id: pip-audit
+        name: pip-audit                # scans requirements.txt / pyproject.toml for known CVEs
+        language: system               # uses the system Python environment
+        entry: pip-audit               # pip-audit must be installed: pip install pip-audit
+        pass_filenames: false          # scans the whole environment, not individual files
+        always_run: true              # run even if no Python files changed
+
+  # ── COMMIT MESSAGE ENFORCEMENT ───────────────────────────────────────────────
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint                    # enforces Conventional Commits format on every commit message
+        stages: [commit-msg]           # runs at commit-msg stage, not pre-commit stage
