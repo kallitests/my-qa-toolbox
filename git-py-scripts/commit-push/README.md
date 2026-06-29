@@ -19,9 +19,20 @@ The plain one-liner `git add . && git commit -m "fix" && git push` has no safety
 - Create an empty or meaningless commit that pollutes the log forever
 - Fail with a cryptic SSH or permission error and leave you guessing why
 
-`git-commit-push-safe` adds the checks a senior developer would mentally run through anyway — but makes them automatic, interactive, and impossible to skip by accident. You still confirm every action; the script just makes sure you have all the information you need before you do.
+`git-commit-push-safe` adds the checks a senior developer would mentally run through anyway — but makes them automatic, interactive, and impossible to skip by accident.
 
-**The result:** the same three Git commands, with a structured pre-flight that takes ~10 seconds and has already caught real mistakes.
+**The result:** the same three Git commands, wrapped in a ~10-second structured pre-flight that has already caught real mistakes in production workflows.
+
+### Key value-add at a glance
+
+| Without the script | With `git-commit-push-safe` |
+|---|---|
+| `.env` silently committed | Secret file scanner blocks it and asks for confirmation |
+| Direct push to `main` with no warning | Explicit confirmation required for protected branches |
+| Empty or `"fix"` commit messages | Minimum-length validation + Conventional Commits guidance |
+| Cryptic SSH / permission errors | Named error patterns with plain-English diagnosis and auto-retry |
+| No idea what just got staged | Full colour-coded file list shown before anything is staged |
+| No confirmation before push | One final `[Y/n]` prompt showing the exact commands that will run |
 
 ---
 
@@ -84,60 +95,84 @@ python git_commit_push.py --path /path/to/your/repo
 
 No config file, no environment variables, no flags to memorise. Just run it.
 
-### Setting up the `gcp` alias
+---
 
-Instead of typing `python git_commit_push.py` every time, create a `gcp` alias that runs the script from anywhere.
+## Setting up the `gcp` alias
 
-**macOS / Linux (bash or zsh)**
+Instead of typing `python /full/path/to/git_commit_push.py` every time, create a short `gcp` alias that launches the script from any directory.
+
+### macOS / Linux — bash
 
 ```bash
-# Add the alias to your shell config — adjust the path to match your actual location
-echo 'alias gcp="python /path/to/git_commit_push.py"' >> ~/.bashrc   # bash
-echo 'alias gcp="python /path/to/git_commit_push.py"' >> ~/.zshrc    # zsh
+# Append the alias to your bash config (replace the path with your actual location)
+echo 'alias gcp="python /path/to/git_commit_push.py"' >> ~/.bashrc
 
-# Reload the config so the alias is available immediately
-source ~/.bashrc   # or source ~/.zshrc
+# Reload the config so the alias is immediately available in the current shell
+source ~/.bashrc
 ```
 
-**Windows — Git Bash**
+### macOS / Linux — zsh
 
 ```bash
-# Add the alias to your Git Bash profile
+echo 'alias gcp="python /path/to/git_commit_push.py"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Windows — Git Bash
+
+```bash
+# Git Bash uses Unix-style paths; /c/ maps to C:\
 echo 'alias gcp="python /c/path/to/git_commit_push.py"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-**Windows — PowerShell**
+### Windows — PowerShell
 
 ```powershell
-# Open your PowerShell profile (creates it if it doesn't exist)
+# Open (or create) your PowerShell profile file
 notepad $PROFILE
 
-# Add this line, then save and close
+# Add this function, then save and close
 function gcp { python "C:\path\to\git_commit_push.py" @args }
+
+# Reload the profile in the current session
+. $PROFILE
 ```
 
-Once set up, just run:
+Once set up, use the alias from any directory:
 
 ```bash
+# Run in the current Git repo
 gcp
-# or target a specific repo
+
+# Or target a specific repo
 gcp --path /path/to/your/repo
 ```
 
-### Verifying the alias
+---
+
+## Verifying the alias
+
+After setup, confirm the alias is correctly wired before relying on it.
 
 ```bash
-# Check that the alias is defined and see what it points to
-alias gcp          # bash / zsh / Git Bash
+# bash / zsh / Git Bash — print the alias definition
+alias gcp
+# Expected output: alias gcp='python /path/to/git_commit_push.py'
 
-# In PowerShell
+# bash / zsh — check which file declared it (useful for debugging)
+type gcp
+
+# PowerShell — inspect the command definition
 Get-Command gcp
-
-# Do a dry run from any Git repo to confirm it works
-cd /any/git/repo
-gcp
+Get-Command gcp | Select-Object -ExpandProperty Definition
 ```
+
+To do a live end-to-end check, navigate to any Git repository and run `gcp`. The script's pre-flight banner should appear immediately. If it does not:
+
+- **"command not found"** → the alias was not written to the right config file, or the file was not sourced.
+- **"python: can't open file"** → the path inside the alias is wrong; verify with `ls /path/to/git_commit_push.py`.
+- **"python: command not found"** → try `python3` instead of `python` in the alias.
 
 ---
 
@@ -223,7 +258,20 @@ fatal: Could not resolve host: github.com
 
 ---
 
+## Linting
+
+The project uses [flake8](https://flake8.pycqa.org/) with a line-length limit of 100 characters, configured in `.flake8`.
+
+```bash
+pip install flake8
+flake8 git_commit_push.py
+# No output = clean
+```
+
+---
+
 ## Notes
 
 - `ALLOWED_GITHUB_USERS` is a set of GitHub usernames trusted as legitimate collaborators on this repo (`khafid1506` and `khafidmedheb` by default). Edit it to match your own team before using this on a different project.
-- Persistent SSH (`ControlMaster`/`ControlPersist`) is **disabled by default** — it produced noisy warnings on Git Bash 
+- Persistent SSH (`ControlMaster`/`ControlPersist`) is **disabled by default** — it produced noisy warnings on Git Bash / Windows with no real benefit in practice. The underlying functions (`ensure_persistent_ssh_config`, `check_github_ssh_identity`) are kept in the source, commented out. Re-enable them if you need shared SSH sessions on macOS/Linux.
+- Zero external dependencies: the script uses only Python's standard library (`os`, `re`, `sys`, `argparse`, `subprocess`, `pathlib`).

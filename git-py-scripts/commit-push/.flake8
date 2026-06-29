@@ -1,0 +1,13 @@
+[flake8]
+# Project line-length convention: 100 characters.
+# The file git_commit_push.py passes cleanly at this threshold.
+max-line-length = 100
+
+# Exclude common non-source directories
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist
