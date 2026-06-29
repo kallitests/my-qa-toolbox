@@ -1,7 +1,7 @@
 # 🚀 create-github-repo
 
 > **Push a local folder to a brand-new GitHub repository in one command.**
-> Pre-flight checks, repo creation via `gh`, auto-invited collaborator, commit & push with smart retry on permission errors.
+> Pre-flight checks, repo creation via `gh`, auto-invited collaborator, commit & push — with smart retry on permission errors.
 
 [![Status](https://img.shields.io/badge/status-stable-brightgreen?style=flat-square)](https://github.com/kallitests/create-github-repo)
 [![Python](https://img.shields.io/badge/python-3.10+-blue?style=flat-square&logo=python)](https://python.org)
@@ -13,12 +13,13 @@
 ## 🗺️ Table of Contents
 
 - [Why this script?](#-why-this-script)
-- [What it does](#%EF%B8%8F-what-it-does)
-- [Workflow](#-workflow)
+- [What it does](#️-what-it-does)
+- [Workflow](#️-workflow)
 - [Requirements](#-requirements)
+- [Quick start — `cgr` alias](#-quick-start--cgr-alias)
 - [Usage](#-usage)
-- [CLI options](#-cli-options)
-- [Built-in safety defaults](#-built-in-safety-defaults)
+- [CLI options](#️-cli-options)
+- [Built-in safety defaults](#️-built-in-safety-defaults)
 - [Notes](#-notes)
 - [Roadmap](#-roadmap)
 - [Author](#-author)
@@ -27,17 +28,25 @@
 
 ## 💡 Why this script?
 
-Pushing a new local project to GitHub usually means several manual, error-prone steps:
+Publishing a new local project to GitHub manually means juggling a chain of error-prone steps:
 
-> *Create the repo on github.com → copy the remote URL → `git init` → `git remote add` → `git add` → `git commit` → `git push` → remember to add your collaborator before they push and get denied.*
+> *Create the repo on github.com → copy the remote URL → `git init` → `git remote add` → `git add` → `git commit` → `git push` → remember to invite your collaborator before their first push gets denied.*
 
-One step forgotten — usually the collaborator one — and the first teammate push fails with a cryptic `Permission ... denied` error.
+Skip any single step — especially the collaborator invite — and you hit a cryptic `Permission ... denied` error that blocks the whole team.
 
-**`create-github-repo` automates this entire flow in a single command — collaborator access included.**
+**`create-github-repo` collapses this entire chain into a single command, collaborator access included.**
 
 ```
 Local folder ──▶ Pre-flight checks ──▶ Repo created (gh) ──▶ Collaborator invited ──▶ Commit & push
 ```
+
+### Key value adds
+
+- **Zero manual steps** — no browser, no copy-pasting remote URLs, no separate `git init`.
+- **Collaborator invite at creation time** — the second known GitHub account is invited immediately, so their first push never gets denied.
+- **Smart push retry** — if the invite hasn't propagated yet at push time, the script re-sends it and retries automatically.
+- **Safe defaults** — `.env`, `venv`, `__pycache__`, `node_modules` and the script itself are always excluded, protecting secrets and keeping the repo clean.
+- **Conflict detection** — refuses to run if the repo name already exists remotely, or if the local folder already has an `origin` remote wired up.
 
 ---
 
@@ -45,12 +54,12 @@ Local folder ──▶ Pre-flight checks ──▶ Repo created (gh) ──▶ C
 
 | Step | Description |
 |------|-------------|
-| 🔍 **Pre-flight checks** | Verifies `git`/`gh` are installed, `gh` is authenticated, the repo name is valid, no remote name collision |
+| 🔍 **Pre-flight checks** | Verifies `git`/`gh` are installed, `gh` is authenticated, repo name is valid, no remote name collision |
 | 📂 **File discovery** | Lists every file/folder in the current directory, minus safe defaults (`.git`, `venv`, `__pycache__`, `.env`…) |
 | 🆕 **Repo creation** | Creates the GitHub repository via `gh repo create` (public or private) |
 | 🤝 **Auto-invite collaborator** | Invites a second known account right after creation — no more surprise "permission denied" on a teammate's first push |
 | 📦 **Commit & push** | Initializes git in place, stages the discovered files, commits, and pushes with `-u` |
-| 🔁 **Smart retry** | If the push is denied for a known collaborator, retries the invite once before failing |
+| 🔁 **Smart retry** | If the push is denied for a known collaborator, retries the invite once before failing with a clear diagnostic |
 
 ---
 
@@ -84,6 +93,71 @@ Local folder ──▶ Pre-flight checks ──▶ Repo created (gh) ──▶ C
 
 ---
 
+## ⚡ Quick start — `cgr` alias
+
+Instead of typing `python /full/path/to/create_github_repo.py` every time, create a `cgr` shell alias that launches the script from anywhere.
+
+### Bash / Zsh (Linux & macOS)
+
+```bash
+# 1. Add the alias to your shell config
+echo 'alias cgr="python /full/path/to/create_github_repo.py"' >> ~/.bashrc
+# (use ~/.zshrc if you are on Zsh)
+
+# 2. Reload the config so the alias is immediately available
+source ~/.bashrc
+# (or: source ~/.zshrc)
+
+# 3. Verify the alias was registered
+alias cgr
+# Expected output:  alias cgr='python /full/path/to/create_github_repo.py'
+```
+
+### Windows — PowerShell
+
+```powershell
+# 1. Open (or create) your PowerShell profile
+notepad $PROFILE
+
+# 2. Add this line and save the file
+function cgr { python "C:\full\path\to\create_github_repo.py" @args }
+
+# 3. Reload the profile
+. $PROFILE
+
+# 4. Verify the alias was registered
+Get-Command cgr
+# or just type: cgr --help
+```
+
+### Windows — Command Prompt (doskey)
+
+```cmd
+:: Add a permanent alias via the registry (runs at every CMD session)
+reg add "HKCU\Software\Microsoft\Command Processor" ^
+  /v AutoRun /t REG_SZ ^
+  /d "doskey cgr=python C:\full\path\to\create_github_repo.py $*" /f
+
+:: Verify in the current session (after reopening CMD)
+doskey /macros | findstr cgr
+```
+
+### Usage once the alias is set
+
+```bash
+# Navigate to the folder you want to push, then:
+cd ~/projects/my-new-tool
+cgr my-new-tool --description "My awesome tool"
+
+# Private repo with custom commit message
+cgr my-new-tool --private --message "chore: initial commit"
+
+# Exclude extra files on top of built-in defaults
+cgr my-new-tool --exclude notes.txt drafts/
+```
+
+---
+
 ## 🚀 Usage
 
 Run it **from the folder you want to push** — everything in that folder gets pushed, minus the exclusions.
@@ -103,7 +177,9 @@ python create_github_repo.py my-project --description "My cool project" --privat
 ### Exclude extra files/folders + custom commit message
 
 ```bash
-python create_github_repo.py my-project --exclude notes.txt drafts --message "chore: initial commit"
+python create_github_repo.py my-project \
+  --exclude notes.txt drafts \
+  --message "chore: initial commit"
 ```
 
 ### Full example

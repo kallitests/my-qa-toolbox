@@ -31,11 +31,11 @@ import sys               # Access sys.exit() to stop the script on fatal errors
 # ── ANSI colour codes for terminal output ────────────────────────────────────
 # These make success / warning / error messages easy to spot at a glance.
 
-GREEN  = "\033[92m"   # ✅ Success messages
+GREEN = "\033[92m"    # ✅ Success messages
 YELLOW = "\033[93m"   # ⚠️  Warning messages
-RED    = "\033[91m"   # ❌  Error / fatal messages
-CYAN   = "\033[96m"   # ℹ️   Info / step messages
-RESET  = "\033[0m"    # Resets colour back to terminal default
+RED = "\033[91m"      # ❌  Error / fatal messages
+CYAN = "\033[96m"     # ℹ️   Info / step messages
+RESET = "\033[0m"     # Resets colour back to terminal default
 
 # Files/folders that are NEVER sent to the remote repo, even without --exclude.
 # This is a safety net against junk and secrets accidentally living in root.
@@ -67,13 +67,16 @@ def info(msg: str) -> None:
     """Print a blue informational message (non-blocking)."""
     print(f"{CYAN}[INFO]  {msg}{RESET}")
 
+
 def success(msg: str) -> None:
     """Print a green success message (non-blocking)."""
     print(f"{GREEN}[OK]    {msg}{RESET}")
 
+
 def warn(msg: str) -> None:
     """Print a yellow warning message (non-blocking — script continues)."""
     print(f"{YELLOW}[WARN]  {msg}{RESET}")
+
 
 def fatal(msg: str) -> None:
     """Print a red error message and immediately stop the script."""
@@ -240,7 +243,8 @@ def check_not_already_a_git_repo() -> bool:
         "This directory already has a .git folder, but no 'origin' remote\n"
         "  is configured — likely a leftover from an interrupted previous run."
     )
-    if not input(f"{YELLOW}  Reuse this existing local repo instead of starting fresh? [y/N]: {RESET}").strip().lower() in ("y", "yes", "o", "oui"):
+    prompt = f"{YELLOW}  Reuse this existing local repo instead of starting fresh? [y/N]: {RESET}"
+    if input(prompt).strip().lower() not in ("y", "yes", "o", "oui"):
         fatal(
             "Aborted. Remove .git manually if you want a completely fresh start:\n"
             "  rmdir /s /q .git   (Windows)   or   rm -rf .git   (Linux/Mac)"
@@ -294,8 +298,11 @@ def get_authenticated_username() -> str:
     return username
 
 
-def add_collaborator_via_gh(repo_slug: str, username: str,
-                             permission: str = DEFAULT_COLLABORATOR_PERMISSION) -> bool:
+def add_collaborator_via_gh(
+    repo_slug: str,
+    username: str,
+    permission: str = DEFAULT_COLLABORATOR_PERMISSION,
+) -> bool:
     """
     Invite `username` as a collaborator on `repo_slug` via the GitHub API
     (through `gh api`). The currently gh-authenticated account must have
@@ -414,7 +421,9 @@ def set_remote_origin(repo_name: str, repo_path: str) -> None:
     success(f"Remote 'origin' set to {remote_url}")
 
 
-def stage_commit_push(repo_path: str, files: list[str], commit_message: str, repo_slug: str) -> None:
+def stage_commit_push(
+    repo_path: str, files: list[str], commit_message: str, repo_slug: str
+) -> None:
     """
     Stage exactly the discovered files/folders, create the initial commit,
     and push to GitHub.
@@ -473,7 +482,10 @@ def stage_commit_push(repo_path: str, files: list[str], commit_message: str, rep
                 "  may need to manually accept the invitation before pushing again."
             )
 
-    fatal(f"Command failed (exit {result.returncode}): git push -u origin main\n  → {result.stderr.strip()}")
+    fatal(
+        f"Command failed (exit {result.returncode}): git push -u origin main"
+        f"\n  → {result.stderr.strip()}"
+    )
 
 
 def print_summary(repo_name: str) -> None:
@@ -526,7 +538,8 @@ Examples:
   python create_github_repo.py my-project --description "My cool project" --private
 
   # Skip extra files/folders on top of the built-in defaults (.git, venv, __pycache__...)
-  python create_github_repo.py my-project --exclude notes.txt drafts --message "chore: initial commit"
+  python create_github_repo.py my-project --exclude notes.txt drafts \
+    --message "chore: initial commit"
         """
     )
 
@@ -592,7 +605,7 @@ def main() -> None:
     # ── Banner ────────────────────────────────────────────────────────────────
     print()
     print(f"{CYAN}{'═' * 60}")
-    print(f"  🚀  create_github_repo.py")
+    print("  🚀  create_github_repo.py")
     print(f"  Repo  : {args.repo_name}")
     print(f"  Desc  : {args.description or '(none)'}")
     print(f"  Vis.  : {'private' if args.private else 'public'}")
@@ -606,8 +619,9 @@ def main() -> None:
     check_gh_installed()                            # gh must be in PATH
     check_gh_authenticated()                        # gh must be logged in
     check_repo_name(args.repo_name)                 # Name must be GitHub-compatible
-    check_repo_not_exists_remotely(args.repo_name)  # No remote collision
-    fresh_init = check_not_already_a_git_repo()      # True = git init needed, False = reuse existing
+    check_repo_not_exists_remotely(args.repo_name)   # No remote collision
+    # True = git init needed, False = reuse existing
+    fresh_init = check_not_already_a_git_repo()
 
     # ── Step 2: Discover files to push ───────────────────────────────────────
     info("Step 2/6 — Discovering files in the current folder...")
@@ -633,6 +647,11 @@ def main() -> None:
 
 
 # Standard Python entry-point guard:
-# This block runs only when the script is executed directly (not imported as a module).
+# This block runs only when the script is executed directly (not impo
+ted as a module).
 if __name__ == "__main__":
     main()
+rted as a module).
+if __name__ == "__main__":
+    main()
+
