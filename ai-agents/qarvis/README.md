@@ -1,9 +1,9 @@
-# 🤖 JarvisQAI
+# 🤖 Qarvis
 
 > **The AI co-pilot every Playwright SDET wishes they had.**
 > Generates and stabilizes Playwright TypeScript tests, reviews architecture, executes scenarios live via Playwright MCP — wrapped in a calm, witty, genuinely encouraging Jarvis-style persona.
 
-[![Status](https://img.shields.io/badge/status-WIP-orange?style=flat-square)](https://github.com/kallitests/JarvisQAI)
+[![Status](https://img.shields.io/badge/status-WIP-orange?style=flat-square)](https://github.com/kallitests/Qarvis)
 [![Python](https://img.shields.io/badge/python-3.11+-blue?style=flat-square&logo=python)](https://python.org)
 [![Claude](https://img.shields.io/badge/Claude-Anthropic-black?style=flat-square)](https://anthropic.com)
 [![Playwright](https://img.shields.io/badge/Playwright-TypeScript-2EAD33?style=flat-square&logo=playwright)](https://playwright.dev)
@@ -13,7 +13,7 @@
 
 ## 🗺️ Table of Contents
 
-- [Why JarvisQAI?](#-why-jarvisqai)
+- [Why Qarvis?](#-why-Qarvis)
 - [Personality](#-personality)
 - [What it does](#%EF%B8%8F-what-it-does)
 - [Playwright superpowers](#-playwright-superpowers)
@@ -27,13 +27,13 @@
 
 ---
 
-## 💡 Why JarvisQAI?
+## 💡 Why Qarvis?
 
 Most AI assistants answer the literal question and stop there.
 
 > *"Sometimes you gotta run before you can walk." — Tony Stark*
 
-JarvisQAI is built to be a **co-pilot**, not a search engine or a code-snippet vending machine: technically sharp like a senior peer, proactive about risks before they're asked about, and honest about what it doesn't know — the same way Jarvis kept Tony sharp without ever being a yes-man.
+Qarvis is built to be a **co-pilot**, not a search engine or a code-snippet vending machine: technically sharp like a senior peer, proactive about risks before they're asked about, and honest about what it doesn't know — the same way Jarvis kept Tony sharp without ever being a yes-man.
 
 **One-line pitch:** *the assistant that writes your Playwright tests, reviews your test architecture, runs scenarios live via MCP, and reminds you that you've got this.*
 
@@ -41,7 +41,7 @@ JarvisQAI is built to be a **co-pilot**, not a search engine or a code-snippet v
 
 ## 🎭 Personality
 
-The part that makes it JarvisQAI and not "ChatGPT with a testing prompt."
+The part that makes it Qarvis and not "ChatGPT with a testing prompt."
 
 | Trait | In practice |
 |---|---|
@@ -68,9 +68,9 @@ The part that makes it JarvisQAI and not "ChatGPT with a testing prompt."
 
 ## 🎭 Playwright Superpowers
 
-JarvisQAI doesn't just talk about tests — it writes, fixes, and structures them, following the best-practices reflexes already baked into its knowledge (`getByRole` over fragile CSS, no `waitForTimeout`, AAA pattern, isolated tests).
+Qarvis doesn't just talk about tests — it writes, fixes, and structures them, following the best-practices reflexes already baked into its knowledge (`getByRole` over fragile CSS, no `waitForTimeout`, AAA pattern, isolated tests).
 
-| Command-style request | What JarvisQAI generates |
+| Command-style request | What Qarvis generates |
 |---|---|
 | `test:generateSpec` | A full Playwright TypeScript `.spec.ts` file from a plain-English feature description |
 | `test:generatePOM` | A Page Object Model class (`LoginPage.ts`, `CheckoutPage.ts`…) with typed methods |
@@ -84,7 +84,7 @@ JarvisQAI doesn't just talk about tests — it writes, fixes, and structures the
 ```
 User: test:generateSpec — login page, valid + invalid credentials
 
-JarvisQAI: Here's your spec — AAA pattern, getByLabel/getByRole locators,
+Qarvis: Here's your spec — AAA pattern, getByLabel/getByRole locators,
 one positive + one negative case, beforeEach handling the cookie banner.
 Want the matching LoginPage.ts to go with it?
 ```
@@ -93,7 +93,7 @@ Want the matching LoginPage.ts to go with it?
 
 ## 🔌 Playwright MCP — Live Execution
 
-Beyond generating code, JarvisQAI can **drive a real browser** through [Playwright MCP](https://github.com/microsoft/playwright-mcp) — observing live page state via accessibility snapshots instead of guessing selectors blind.
+Beyond generating code, Qarvis can **drive a real browser** through [Playwright MCP](https://github.com/microsoft/playwright-mcp) — observing live page state via accessibility snapshots instead of guessing selectors blind.
 
 | Use case | What happens |
 |---|---|
@@ -111,7 +111,7 @@ Beyond generating code, JarvisQAI can **drive a real browser** through [Playwrig
 ```
 User: My Sauce Demo suite passes locally but fails in CI.
 
-JarvisQAI: Classic local/CI mismatch — three usual suspects, in order
+Qarvis: Classic local/CI mismatch — three usual suspects, in order
 of likelihood: viewport defaults, timing (CI runners are slower,
 your waitForTimeout calls will betray you first), and environment
 variables not making it into the CI secrets. Show me the CI log
@@ -121,7 +121,7 @@ and I'll narrow it down before you've finished your coffee.
 ```
 User: Finally got the storageState fixture working after two days.
 
-JarvisQAI: Two days well spent — that fixture saves every test after
+Qarvis: Two days well spent — that fixture saves every test after
 it from a redundant login, and you'll feel the time savings the
 moment your suite hits fifty tests. Nicely done. What's next on
 the list?
@@ -130,7 +130,7 @@ the list?
 ```
 User: test:analyzeSelector — page.locator('div > div:nth-child(3) > button')
 
-JarvisQAI: That selector breaks the moment a designer adds one wrapping
+Qarvis: That selector breaks the moment a designer adds one wrapping
 div — and they will. Let's open the live DOM via MCP and find the
 actual role or label backing that button instead.
 ```
@@ -141,7 +141,7 @@ actual role or label backing that button instead.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                              JarvisQAI                                │
+│                              Qarvis                                │
 │                                                                        │
 │  ┌──────────────┐    ┌────────────────┐    ┌───────────────────────┐│
 │  │ Persona layer│───▶│ Context layer  │───▶│ Knowledge layer       ││
