@@ -22,7 +22,6 @@
   - [PR Smoke Gate — Playwright fast CI gate](#2-pr-smoke-gate--playwright-fast-ci-gate)
   - [cy-commands-ai — AI-boosted Cypress commands](#3-cy-commands-ai--ai-boosted-cypress-commands)
   - [Qarvis — AI co-pilot for Playwright SDETs](#4-qarvis--ai-co-pilot-for-playwright-sdets)
-  - [User Story → Jira Ticket](#5-user-story--jira-ticket)
 - [Git Scripts](#-git-scripts)
   - [git-commit-push-safe](#1-git-commit-push-safe)
   - [git-commit-push-ai](#2-git-commit-push-ai)
@@ -40,7 +39,7 @@
 
 ## 💡 Why This Repo?
 
-A QA engineer's day is full of tasks that *feel* like work but *add no testing value*: manually triaging CI failures, writing commit messages for the tenth time, reformatting a user story into a Jira ticket, setting up a new repo, or fighting GitHub auth errors before a single line of production code is ever tested.
+A QA engineer's day is full of tasks that *feel* like work but *add no testing value*: manually triaging CI failures, writing commit messages for the tenth time, setting up a new repo, or fighting GitHub auth errors before a single line of production code is ever tested.
 
 **This repo systematically attacks those tasks.**
 
@@ -65,7 +64,6 @@ Commit message quality    ──▶ AI generation    → from friction to zero f
 | 🎭 AI Agent | [PR Smoke Gate](#2-pr-smoke-gate--playwright-fast-ci-gate) | WIP | Full Playwright CI gate under 5 min |
 | 🧩 AI Agent | [cy-commands-ai](#3-cy-commands-ai--ai-boosted-cypress-commands) | Active | Assertion writing, failure triage, test design |
 | 🤖 AI Agent | [Qarvis](#4-qarvis--ai-co-pilot-for-playwright-sdets) | WIP | Test generation, selector debugging, CI setup |
-| 🎫 AI Agent | [User Story → Jira](#5-user-story--jira-ticket) | Active | Jira ticket creation from free-text stories |
 | 🔒 Script | [git-commit-push-safe](#1-git-commit-push-safe) | Stable | Guarded Git workflow, zero accidental pushes |
 | 🧠 Script | [git-commit-push-ai](#2-git-commit-push-ai) | Stable | AI-written commit messages, Conventional Commits |
 | 🚀 Script | [create-github-repo](#3-create-github-repo) | Stable | New GitHub repo published in one command |
@@ -167,26 +165,6 @@ A Jarvis-style AI assistant purpose-built for Playwright engineers. Qarvis does 
 **QA value-add:** A junior SDET can spend an entire day setting up a Playwright suite from scratch. Qarvis generates the scaffold — spec, POM, CI config — in minutes, letting the engineer focus on test logic and edge cases instead of boilerplate. Live selector discovery via Playwright MCP eliminates the trial-and-error loop of writing locators against a running app.
 
 **Stack:** Python 3.11+ · Claude (Anthropic) · Playwright MCP
-
----
-
-### 5. User Story → Jira Ticket
-
-📁 `ai-agents/user-story-to-jira/`
-
-A React web app that turns any free-text user story into a production-ready, fully structured Jira ticket — in seconds.
-
-**Output includes:** summary · priority · story points · labels · acceptance criteria (Given/When/Then) · test cases (happy path + edge cases) · Definition of Done · technical notes · Jira-compatible JSON.
-
-**QA value-add:** Writing a well-structured Jira ticket from a user story is 15–30 minutes of careful, repetitive work — with a high risk of missing acceptance criteria or test cases if done under time pressure. This tool does it in under 10 seconds and covers every field consistently, regardless of who wrote the story or how it was phrased.
-
-```
-Paste story → click Generate → copy JSON → paste into Jira
-```
-
-Language-aware: writes the ticket in the same language as the input (FR/EN).
-
-**Stack:** React 18 · Vite · Claude Sonnet (Anthropic API)
 
 ---
 
@@ -346,7 +324,6 @@ my-qa-toolbox/
 │   ├── smoke-tests-gate/       # PR Smoke Gate — Playwright TypeScript fast CI suite
 │   ├── cy-commands-ai/         # cy-commands-box — AI-boosted Cypress commands (aiAssert, aiTriage, aiGenerateTestCase)
 │   ├── qarvis/                 # Qarvis — AI co-pilot for Playwright SDETs
-│   ├── user-story-to-jira/     # React app — user story → Jira-ready JSON ticket
 │   └── doc/                    # Agent ideas & brainstorming
 │
 ├── git-py-scripts/
